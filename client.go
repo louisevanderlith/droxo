@@ -31,11 +31,11 @@ func AssignOperator(profile, host string) {
 	}
 }
 
-func DefineClient(clientId, clientSecret, host, authHost string) {
+func DefineClient(clientId, clientSecret, host, authHost string, scopes ...string) {
 	config = oauth2.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
-		Scopes:       []string{"blog", "comms"},
+		Scopes:       scopes,//[]string{"blog", "comms"},
 		RedirectURL:  host + "/oauth2",
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  authHost + "/auth",
@@ -49,17 +49,20 @@ func AuthCallback(c *gin.Context) {
 	state := c.Request.Form.Get("state")
 	if state != "xyz" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("state invalid"))
+		return
 	}
 
 	code := c.Request.Form.Get("code")
 	if code == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("code not found"))
+		return
 	}
 
 	token, err := config.Exchange(context.Background(), code)
 
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
+		return
 	}
 
 	globToken = token
