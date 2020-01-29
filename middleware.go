@@ -1,13 +1,48 @@
 package droxo
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 )
+
+func AuthorizeClient() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if globToken != nil {
+			c.Next()
+			return
+		}
+
+		// Generate random state
+		b := make([]byte, 32)
+		_, err := rand.Read(b)
+
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		state := base64.StdEncoding.EncodeToString(b)
+
+		session := sessions.Default(c)
+
+		session.Set("state", state)
+		err = session.Save()
+
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		c.Redirect(http.StatusTemporaryRedirect, config.AuthCodeURL(state))
+	}
+}
 
 func Authorize() gin.HandlerFunc {
 	return func(c *gin.Context) {
