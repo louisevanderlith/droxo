@@ -2,6 +2,8 @@ package droxo
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/coreos/go-oidc"
@@ -14,9 +16,9 @@ import (
 )
 
 var (
-	config    oauth2.Config
-	provider  *oidc.Provider
-	Oper      service
+	config   oauth2.Config
+	provider *oidc.Provider
+	Oper     service
 )
 
 type service struct {
@@ -34,7 +36,7 @@ func AssignOperator(profile, host string) {
 }
 
 func DefineClient(clientId, clientSecret, host, authHost string, scopes ...string) {
-	prov, err := oidc.NewProvider(context.Background(),authHost)
+	prov, err := oidc.NewProvider(context.Background(), authHost)
 
 	if err != nil {
 		panic(err)
@@ -47,8 +49,40 @@ func DefineClient(clientId, clientSecret, host, authHost string, scopes ...strin
 		ClientSecret: clientSecret,
 		Scopes:       scopes,
 		RedirectURL:  fmt.Sprintf("https://%s.%s/oauth2", clientId, host),
-		Endpoint: provider.Endpoint(),
+		Endpoint:     provider.Endpoint(),
 	}
+}
+
+func AuthStart(c *gin.Context) {
+	session := sessions.Default(c)
+
+	if session.Get("profile") != nil {
+		c.Next()
+		return
+	}
+
+	// Generate random state
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	state := base64.StdEncoding.EncodeToString(b)
+
+	//session := sessions.Default(c)
+
+	session.Set("state", state)
+	err = session.Save()
+
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.Redirect(http.StatusTemporaryRedirect, config.AuthCodeURL(state))
 }
 
 func AuthCallback(c *gin.Context) {
@@ -103,12 +137,12 @@ func AuthCallback(c *gin.Context) {
 	}
 
 	session.Set("id_token", rawIDToken)
-	session.Set("access_token",token.AccessToken)
-	session.Set("profile",profile)
+	session.Set("access_token", token.AccessToken)
+	session.Set("profile", profile)
 
 	err = session.Save()
 
-	if err != nil{
+	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
@@ -116,6 +150,39 @@ func AuthCallback(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, "/")
 }
 
+/*
+func Logout(c *gin.Context) {
+	domain := "YOUR_DOMAIN"
+
+	logoutUrl, err := url.Parse("https://" + domain)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	logoutUrl.Path += "/v2/logout"
+	parameters := url.Values{}
+
+	var scheme string
+	if r.TLS == nil {
+		scheme = "http"
+	} else {
+		scheme = "https"
+	}
+
+	returnTo, err := url.Parse(scheme + "://" +  r.Host)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	parameters.Add("returnTo", returnTo.String())
+	parameters.Add("client_id", "YOUR_CLIENT_ID")
+	logoutUrl.RawQuery = parameters.Encode()
+
+	http.Redirect(w, r, logoutUrl.String(), http.StatusTemporaryRedirect)
+}
+*/
 func Wrap(name string, result interface{}) gin.H {
 	lname := strings.ToLower(name)
 	jstmpl := lname + ".js"
