@@ -48,10 +48,7 @@ func DefineClient(clientId, clientSecret, host, authHost string, scopes ...strin
 		ClientSecret: clientSecret,
 		Scopes:       scopes,
 		RedirectURL:  host + "/oauth2",
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  authHost + "/auth",
-			TokenURL: authHost + "/token",
-		},
+		Endpoint: provider.Endpoint(),
 	}
 }
 
