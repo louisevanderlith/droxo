@@ -87,7 +87,7 @@ func AuthStart(c *gin.Context) {
 
 func AuthCallback(c *gin.Context) {
 	c.Request.ParseForm()
-	state := c.Request.Form.Get("state")
+	state := c.Query("state")
 
 	session := sessions.Default(c)
 
@@ -98,7 +98,7 @@ func AuthCallback(c *gin.Context) {
 		return
 	}
 
-	code := c.Request.Form.Get("code")
+	code := c.Query("code")
 	if code == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("code not found"))
 		return
@@ -110,6 +110,8 @@ func AuthCallback(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
+
+
 
 	rawIDToken, ok := token.Extra("id_token").(string)
 
