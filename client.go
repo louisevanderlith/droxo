@@ -47,7 +47,7 @@ func DefineClient(clientId, clientSecret, host, authHost string, scopes ...strin
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		Scopes:       scopes,
-		RedirectURL:  fmt.Sprintf("%s.%s/oauth2", clientId, host),
+		RedirectURL:  fmt.Sprintf("https://%s.%s/oauth2", clientId, host),
 		Endpoint: provider.Endpoint(),
 	}
 }
