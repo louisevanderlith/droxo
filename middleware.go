@@ -1,9 +1,8 @@
 package droxo
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -18,31 +17,9 @@ func AuthorizeClient() gin.HandlerFunc {
 
 		if session.Get("profile") != nil {
 			c.Next()
-			return
+		} else {
+			c.Redirect(http.StatusSeeOther, "/login")
 		}
-
-		// Generate random state
-		b := make([]byte, 32)
-		_, err := rand.Read(b)
-
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-
-		state := base64.StdEncoding.EncodeToString(b)
-
-		//session := sessions.Default(c)
-
-		session.Set("state", state)
-		err = session.Save()
-
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-
-		c.Redirect(http.StatusTemporaryRedirect, config.AuthCodeURL(state))
 	}
 }
 
@@ -65,8 +42,8 @@ func Authorize() gin.HandlerFunc {
 		data := url.Values{
 			"token": {strings.Trim(splitToken[1], " ")},
 		}
-		log.Println(data.Encode())
-		resp, err := http.PostForm("http://oauth2:8086/info", data)
+		log.Println("Encode token:", data.Encode())
+		resp, err := http.PostForm(fmt.Sprintf("https://oauth2%sinfo", Oper.Host), data)
 
 		if err != nil {
 			log.Println(err)
@@ -98,6 +75,7 @@ func Authorize() gin.HandlerFunc {
 
 		if len(clientId) == 0 {
 			c.AbortWithStatus(http.StatusUnauthorized)
+			return
 		}
 
 		c.Set("client", clientId)
