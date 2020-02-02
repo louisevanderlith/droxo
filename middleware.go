@@ -14,7 +14,9 @@ import (
 
 func AuthorizeClient() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if globToken != nil {
+		session := sessions.Default(c)
+
+		if session.Get("profile") != nil {
 			c.Next()
 			return
 		}
@@ -30,7 +32,7 @@ func AuthorizeClient() gin.HandlerFunc {
 
 		state := base64.StdEncoding.EncodeToString(b)
 
-		session := sessions.Default(c)
+		//session := sessions.Default(c)
 
 		session.Set("state", state)
 		err = session.Save()

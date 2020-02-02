@@ -15,7 +15,6 @@ import (
 
 var (
 	config    oauth2.Config
-	globToken *oauth2.Token
 	provider  *oidc.Provider
 	Oper      service
 )
@@ -77,8 +76,6 @@ func AuthCallback(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-
-	globToken = token
 
 	rawIDToken, ok := token.Extra("id_token").(string)
 
