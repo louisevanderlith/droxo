@@ -82,7 +82,8 @@ func AuthStart(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusTemporaryRedirect, config.AuthCodeURL(state))
+	responseType := oauth2.SetAuthURLParam("response_type", "code id_token")
+	c.Redirect(http.StatusTemporaryRedirect, config.AuthCodeURL(state, responseType))
 }
 
 func AuthCallback(c *gin.Context) {
