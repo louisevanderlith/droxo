@@ -82,7 +82,7 @@ func AuthStart(c *gin.Context) {
 		return
 	}
 
-	responseType := oauth2.SetAuthURLParam("response_type", "code id_token")
+	responseType := oauth2.SetAuthURLParam("response_type", "code")
 	c.Redirect(http.StatusTemporaryRedirect, config.AuthCodeURL(state, responseType))
 }
 
@@ -111,8 +111,6 @@ func AuthCallback(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-
-
 
 	rawIDToken, ok := token.Extra("id_token").(string)
 
