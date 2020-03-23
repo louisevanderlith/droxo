@@ -10,7 +10,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -119,27 +118,16 @@ func AuthCallback(c *gin.Context) {
 		return
 	}
 
-	oidcConfig := &oidc.Config{
-		ClientID: config.ClientID,
-	}
-
-	idToken, err := provider.Verifier(oidcConfig).Verify(c.Copy(), rawIDToken)
+	info, err := provider.UserInfo(c.Copy(), config.TokenSource(c.Copy(), token))
 
 	if err != nil {
-		log.Println("Failed to verify ID Token: " + err.Error())
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
-
-	var profile map[string]interface{}
-	if err := idToken.Claims(&profile); err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
 	session.Set("id_token", rawIDToken)
 	session.Set("access_token", token.AccessToken)
-	session.Set("profile", profile)
+	session.Set("profile", info)
 
 	err = session.Save()
 
