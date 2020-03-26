@@ -1,26 +1,61 @@
 package droxo
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/oauth2"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
-func AuthorizeClient() gin.HandlerFunc {
+func AuthorizeClient(clientId, clientSecret, introspectUrl string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 
-		if session.Get("profile") != nil {
+		if accesstokn := session.Get("access_token"); accesstokn != nil {
+			c.Set("profile", loadProfile(accesstokn.(string), clientId, clientSecret, introspectUrl))
 			c.Next()
 		} else {
 			c.Redirect(http.StatusSeeOther, "/login")
 		}
 	}
+}
+
+func loadProfile(accessToken, clientId, clientSecret, introspectUrl string) interface{} {
+	req, err := http.NewRequest("POST", introspectUrl, bytes.NewReader([]byte(accessToken)))
+
+	if err != nil {
+		log.Println("Failed to make new Request", err)
+		return nil
+	}
+	req.SetBasicAuth(clientId, clientSecret)
+
+	client := &http.Client{Timeout: time.Second * 10}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("Error reading response. ", err)
+		return nil
+	}
+	defer resp.Body.Close()
+
+	dec := json.NewDecoder(resp.Body)
+
+	info := oauth2.Token{}
+	err = dec.Decode(&info)
+
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	return info
 }
 
 func Authorize() gin.HandlerFunc {
