@@ -111,23 +111,11 @@ func AuthCallback(c *gin.Context) {
 		return
 	}
 
-	rawIDToken, ok := token.Extra("id_token").(string)
-
-	if !ok {
-		c.AbortWithError(http.StatusInternalServerError, errors.New("No id_token field in oauth2 token."))
-		return
+	if len(token.RefreshToken) > 0 {
+		session.Set("refresh_token", token.RefreshToken)
 	}
 
-	info, err := provider.UserInfo(c.Copy(), config.TokenSource(c.Copy(), token))
-
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
-
-	session.Set("id_token", rawIDToken)
 	session.Set("access_token", token.AccessToken)
-	session.Set("profile", info)
 
 	err = session.Save()
 
