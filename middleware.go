@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/oauth2"
 	"log"
 	"net/http"
 	"net/url"
@@ -49,7 +48,7 @@ func loadProfile(accessToken, introspectUrl string) interface{} {
 
 	dec := json.NewDecoder(resp.Body)
 
-	info := oauth2.Token{}
+	var info interface{}
 	err = dec.Decode(&info)
 
 	if err != nil {
