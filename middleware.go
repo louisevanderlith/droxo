@@ -1,7 +1,6 @@
 package droxo
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-contrib/sessions"
@@ -28,12 +27,15 @@ func AuthorizeClient(introspectUrl string) gin.HandlerFunc {
 }
 
 func loadProfile(accessToken, introspectUrl string) interface{} {
-	req, err := http.NewRequest("POST", introspectUrl, bytes.NewReader([]byte(accessToken)))
+	form := url.Values{}
+	form.Add("access_code", accessToken)
+	req, err := http.NewRequest("POST", introspectUrl, strings.NewReader(form.Encode()))
 
 	if err != nil {
 		log.Println("Failed to make new Request", err)
 		return nil
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(config.ClientID, config.ClientSecret)
 
 	client := &http.Client{Timeout: time.Second * 10}
