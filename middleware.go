@@ -14,12 +14,12 @@ import (
 	"time"
 )
 
-func AuthorizeClient(clientId, clientSecret, introspectUrl string) gin.HandlerFunc {
+func AuthorizeClient(introspectUrl string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 
 		if accesstokn := session.Get("access_token"); accesstokn != nil {
-			c.Set("profile", loadProfile(accesstokn.(string), clientId, clientSecret, introspectUrl))
+			c.Set("profile", loadProfile(accesstokn.(string), introspectUrl))
 			c.Next()
 		} else {
 			c.Redirect(http.StatusSeeOther, "/login")
@@ -27,14 +27,14 @@ func AuthorizeClient(clientId, clientSecret, introspectUrl string) gin.HandlerFu
 	}
 }
 
-func loadProfile(accessToken, clientId, clientSecret, introspectUrl string) interface{} {
+func loadProfile(accessToken, introspectUrl string) interface{} {
 	req, err := http.NewRequest("POST", introspectUrl, bytes.NewReader([]byte(accessToken)))
 
 	if err != nil {
 		log.Println("Failed to make new Request", err)
 		return nil
 	}
-	req.SetBasicAuth(clientId, clientSecret)
+	req.SetBasicAuth(config.ClientID, config.ClientSecret)
 
 	client := &http.Client{Timeout: time.Second * 10}
 
