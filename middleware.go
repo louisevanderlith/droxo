@@ -59,7 +59,7 @@ func loadProfile(accessToken, introspectUrl string) interface{} {
 	return info
 }
 
-func Authorize() gin.HandlerFunc {
+func Authorize(authority string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		reqToken := c.GetHeader("Authorization")
 
@@ -79,7 +79,7 @@ func Authorize() gin.HandlerFunc {
 			"token": {strings.Trim(splitToken[1], " ")},
 		}
 		log.Println("Encode token:", data.Encode())
-		resp, err := http.PostForm(fmt.Sprintf("https://oauth2%sinfo", Oper.Host), data)
+		resp, err := http.PostForm(fmt.Sprintf("%s/info", authority), data)
 
 		if err != nil {
 			log.Println(err)
