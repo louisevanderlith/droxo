@@ -17,21 +17,12 @@ import (
 var (
 	config   oauth2.Config
 	provider *oidc.Provider
-	Oper     service
 )
 
-type service struct {
+type Service struct {
 	Profile string
-	Host    string
+	APIKeys map[string]string
 	LogoKey string
-}
-
-func AssignOperator(profile, host string) {
-	Oper = service{
-		Profile: profile,
-		Host:    fmt.Sprintf(".%s/", host),
-		LogoKey: "0`0",
-	}
 }
 
 func DefineClient(clientId, clientSecret, host, authHost string, scopes ...string) {
@@ -160,14 +151,14 @@ func Logout(c *gin.Context) {
 	http.Redirect(w, r, logoutUrl.String(), http.StatusTemporaryRedirect)
 }
 */
-func Wrap(name string, result interface{}) gin.H {
+func Wrap(name string, oper Service, result interface{}) gin.H {
 	lname := strings.ToLower(name)
 	jstmpl := lname + ".js"
 
 	return gin.H{
-		"Title":      fmt.Sprintf("%s - %s", name, Oper.Profile),
+		"Title":      fmt.Sprintf("%s - %s", name, oper.Profile),
 		"Data":       result,
-		"Oper":       Oper,
+		"Oper":       oper,
 		"HasScript":  true,
 		"ScriptName": jstmpl,
 	}
