@@ -22,16 +22,14 @@ type Service struct {
 }
 
 //AuthenticateClient will return a token for the current client
-func AuthenticateClient(clientId, clientSecret, authority string, scopes ...string) (*oauth2.Token, error) {
-	cfg := clientcredentials.Config{
+func AuthenticateClient(clientId, clientSecret, authority string, scopes ...string) clientcredentials.Config {
+	return clientcredentials.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		TokenURL:     authority + "/token",
 		Scopes:       scopes,
 		AuthStyle:    0,
 	}
-
-	return cfg.Token(context.Background())
 }
 
 //PrepareClientUser will return a config for the current client, to be used for user authentication

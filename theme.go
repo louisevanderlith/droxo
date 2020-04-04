@@ -1,8 +1,10 @@
 package droxo
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/gin-contrib/multitemplate"
+	"golang.org/x/oauth2/clientcredentials"
 	"io"
 	"net/http"
 	"os"
@@ -37,8 +39,9 @@ func LoadTemplates(templatesDir string) (multitemplate.Renderer, error) {
 	return r, nil
 }
 
-func UpdateTheme(url string) error {
-	resp, err := http.Get(url + "/asset/html")
+func UpdateTheme(cfg clientcredentials.Config, url string) error {
+	clnt := cfg.Client(context.Background())
+	resp, err := clnt.Get(url + "/asset/html")
 
 	if err != nil {
 		return err
