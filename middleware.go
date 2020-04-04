@@ -33,7 +33,7 @@ func AuthorizeReally(cfg oauth2.Config) gin.HandlerFunc {
 
 		if jstoken := session.Get("full_token"); jstoken != nil {
 			ftokn := &oauth2.Token{}
-			err:= json.Unmarshal(jstoken.([]byte), ftokn)
+			err := json.Unmarshal(jstoken.([]byte), ftokn)
 
 			if err != nil {
 				log.Println(err)
@@ -87,7 +87,7 @@ func loadProfile(accessToken, clientId, clientSecret, introspectUrl string) inte
 	return info
 }
 
-func Authorize(authority string) gin.HandlerFunc {
+func Authorize(scope, scopesecret, authority string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		reqToken := c.GetHeader("Authorization")
 
@@ -103,11 +103,36 @@ func Authorize(authority string) gin.HandlerFunc {
 			return
 		}
 
-		data := url.Values{
-			"token": {strings.Trim(splitToken[1], " ")},
+		form := url.Values{
+			"scope":        {scope},
+			"scope_secret": {scopesecret},
 		}
-		log.Println("Encode token:", data.Encode())
-		resp, err := http.PostForm(fmt.Sprintf("%s/info", authority), data)
+		req, err := http.NewRequest("POST", fmt.Sprintf("%s/validate", authority), strings.NewReader(form.Encode()))
+
+		if err != nil {
+			log.Println("Failed to make new Request", err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Authorization", reqToken)
+
+		client := &http.Client{Timeout: time.Second * 10}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Println("Error reading response. ", err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		defer resp.Body.Close()
+
+		dec := json.NewDecoder(resp.Body)
+
+		result := make(map[string]interface{})
+		err = dec.Decode(&result)
 
 		if err != nil {
 			log.Println(err)
@@ -115,26 +140,9 @@ func Authorize(authority string) gin.HandlerFunc {
 			return
 		}
 
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			log.Println("not ok", resp.StatusCode)
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		result := make(map[string]interface{})
-		dec := json.NewDecoder(resp.Body)
-		err = dec.Decode(&result)
-
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-
 		//TODO: Validate claims
 		//[Access:eyJhbGciOiJIUzUx.. AccessCreateAt:2020-01-13T20:43:36.113973491Z AccessExpiresIn:7.2e+12 ClientID:www Code: CodeCreateAt:0001-01-01T00:00:00Z CodeExpiresIn:0 RedirectURI: Refresh: RefreshCreateAt:0001-01-01T00:00:00Z RefreshExpiresIn:0 Scope:offline_access UserID:
-
+		log.Println("full_claims", result)
 		clientId := result["ClientID"].(string)
 
 		if len(clientId) == 0 {
