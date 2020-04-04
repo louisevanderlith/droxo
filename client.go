@@ -4,19 +4,15 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/coreos/go-oidc"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/clientcredentials"
 	"net/http"
 	"strings"
-)
-
-var (
-	config   oauth2.Config
-	provider *oidc.Provider
 )
 
 type Service struct {
@@ -25,97 +21,108 @@ type Service struct {
 	LogoKey string
 }
 
-func DefineClient(clientId, clientSecret, host, authHost string, scopes ...string) {
-	prov, err := oidc.NewProvider(context.Background(), authHost)
-
-	if err != nil {
-		panic(err)
+//AuthenticateClient will return a token for the current client
+func AuthenticateClient(clientId, clientSecret, authority string, scopes ...string) (*oauth2.Token, error) {
+	cfg := clientcredentials.Config{
+		ClientID:     clientId,
+		ClientSecret: clientSecret,
+		TokenURL:     authority + "/token",
+		Scopes:       scopes,
+		AuthStyle:    0,
 	}
 
-	provider = prov
+	return cfg.Token(context.Background())
+}
 
-	config = oauth2.Config{
+//PrepareClientUser will return a config for the current client, to be used for user authentication
+func PrepareClientUser(clientId, clientSecret, authority string, scopes ...string) oauth2.Config {
+	return oauth2.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		Scopes:       scopes,
-		RedirectURL:  fmt.Sprintf("https://%s.%s/oauth2", clientId, host),
-		Endpoint:     provider.Endpoint(),
+		Endpoint:     oauth2.Endpoint{TokenURL: authority + "/token", AuthURL: authority + "/authorize"},
 	}
 }
 
-func AuthStart(c *gin.Context) {
-	session := sessions.Default(c)
+func AuthStart(cfg oauth2.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
 
-	if session.Get("profile") != nil {
-		c.Next()
-		return
+		if session.Get("profile") != nil {
+			c.Next()
+			return
+		}
+
+		// Generate random state
+		b := make([]byte, 32)
+		_, err := rand.Read(b)
+
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		state := base64.StdEncoding.EncodeToString(b)
+
+		session.Set("state", state)
+		err = session.Save()
+
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		responseType := oauth2.SetAuthURLParam("response_type", "code")
+		c.Redirect(http.StatusTemporaryRedirect, cfg.AuthCodeURL(state, responseType))
 	}
-
-	// Generate random state
-	b := make([]byte, 32)
-	_, err := rand.Read(b)
-
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
-
-	state := base64.StdEncoding.EncodeToString(b)
-
-	//session := sessions.Default(c)
-
-	session.Set("state", state)
-	err = session.Save()
-
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
-
-	responseType := oauth2.SetAuthURLParam("response_type", "code")
-	c.Redirect(http.StatusTemporaryRedirect, config.AuthCodeURL(state, responseType))
 }
 
-func AuthCallback(c *gin.Context) {
-	c.Request.ParseForm()
-	state := c.Query("state")
+func AuthCallback(cfg oauth2.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Request.ParseForm()
+		state := c.Query("state")
 
-	session := sessions.Default(c)
+		session := sessions.Default(c)
 
-	cstate := session.Get("state")
+		cstate := session.Get("state")
 
-	if state != cstate {
-		c.AbortWithError(http.StatusBadRequest, errors.New("state invalid"))
-		return
+		if state != cstate {
+			c.AbortWithError(http.StatusBadRequest, errors.New("state invalid"))
+			return
+		}
+
+		code := c.Query("code")
+		if code == "" {
+			c.AbortWithError(http.StatusBadRequest, errors.New("code not found"))
+			return
+		}
+
+		token, err := cfg.Exchange(context.Background(), code)
+
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		jsTokn, err := json.Marshal(token)
+
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		session.Set("full_token", jsTokn)
+		session.Set("access_token", token.AccessToken)
+
+		err = session.Save()
+
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		c.Redirect(http.StatusSeeOther, "/")
 	}
-
-	code := c.Query("code")
-	if code == "" {
-		c.AbortWithError(http.StatusBadRequest, errors.New("code not found"))
-		return
-	}
-
-	token, err := config.Exchange(context.Background(), code)
-
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
-
-	if len(token.RefreshToken) > 0 {
-		session.Set("refresh_token", token.RefreshToken)
-	}
-
-	session.Set("access_token", token.AccessToken)
-
-	err = session.Save()
-
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
-
-	c.Redirect(http.StatusSeeOther, "/")
 }
 
 /*
