@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/oauth2"
 	"log"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"time"
 )
 
-func AuthorizeClient(introspectUrl string) gin.HandlerFunc {
+func AuthorizeClient(clientId, clientSecret, introspectUrl string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 
 		if accesstokn := session.Get("access_token"); accesstokn != nil {
-			c.Set("profile", loadProfile(accesstokn.(string), introspectUrl))
+			c.Set("profile", loadProfile(accesstokn.(string), clientId, clientSecret, introspectUrl))
 			c.Next()
 		} else {
 			c.Redirect(http.StatusSeeOther, "/login")
@@ -25,7 +26,34 @@ func AuthorizeClient(introspectUrl string) gin.HandlerFunc {
 	}
 }
 
-func loadProfile(accessToken, introspectUrl string) interface{} {
+func AuthorizeReally(cfg oauth2.Config) gin.HandlerFunc {
+	infoUrl := strings.Replace(cfg.Endpoint.TokenURL, "token", "info", 1)
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+
+		if jstoken := session.Get("full_token"); jstoken != nil {
+			ftokn := &oauth2.Token{}
+			err:= json.Unmarshal(jstoken.([]byte), ftokn)
+
+			if err != nil {
+				log.Println(err)
+				c.AbortWithError(http.StatusInternalServerError, err)
+			}
+
+			if !ftokn.Valid() {
+				c.Redirect(http.StatusSeeOther, "/login")
+				return
+			}
+
+			c.Set("profile", loadProfile(ftokn.AccessToken, cfg.ClientID, cfg.ClientSecret, infoUrl))
+			c.Next()
+		} else {
+			c.Redirect(http.StatusSeeOther, "/login")
+		}
+	}
+}
+
+func loadProfile(accessToken, clientId, clientSecret, introspectUrl string) interface{} {
 	form := url.Values{}
 	form.Add("access_code", accessToken)
 	req, err := http.NewRequest("POST", introspectUrl, strings.NewReader(form.Encode()))
@@ -35,7 +63,7 @@ func loadProfile(accessToken, introspectUrl string) interface{} {
 		return nil
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(config.ClientID, config.ClientSecret)
+	req.SetBasicAuth(clientId, clientSecret)
 
 	client := &http.Client{Timeout: time.Second * 10}
 
