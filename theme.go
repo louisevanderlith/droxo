@@ -3,6 +3,7 @@ package droxo
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/gin-contrib/multitemplate"
 	"golang.org/x/oauth2/clientcredentials"
 	"io"
@@ -41,13 +42,17 @@ func LoadTemplates(templatesDir string) (multitemplate.Renderer, error) {
 
 func UpdateTheme(cfg clientcredentials.Config, url string) error {
 	clnt := cfg.Client(context.Background())
-	resp, err := clnt.Get(url + "/asset/html")
+	resp, err := clnt.Get(url + "asset/html")
 
 	if err != nil {
 		return err
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status %s", resp.Status)
+	}
 
 	var items []string
 	dec := json.NewDecoder(resp.Body)
@@ -69,7 +74,7 @@ func UpdateTheme(cfg clientcredentials.Config, url string) error {
 }
 
 func downloadFile(url, templ string) error {
-	resp, err := http.Get(url + "/asset/html/" + templ)
+	resp, err := http.Get(url + "asset/html/" + templ)
 
 	if err != nil {
 		return err
