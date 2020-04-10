@@ -143,13 +143,29 @@ func Authorize(scope, scopesecret, authority string) gin.HandlerFunc {
 		//TODO: Validate claims
 		//[Access:eyJhbGciOiJIUzUx.. AccessCreateAt:2020-01-13T20:43:36.113973491Z AccessExpiresIn:7.2e+12 ClientID:www Code: CodeCreateAt:0001-01-01T00:00:00Z CodeExpiresIn:0 RedirectURI: Refresh: RefreshCreateAt:0001-01-01T00:00:00Z RefreshExpiresIn:0 Scope:offline_access UserID:
 		log.Println("full_claims", result)
-		clientId := result["ClientID"].(string)
+		actv, ok := result["active"]
 
-		if len(clientId) == 0 {
+		if !ok {
+			log.Println("active not in token")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		c.Set("client", clientId)
+		if actv != "true"{
+			log.Println("Active Failed", actv)
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		clntId, ok := result["client_id"]
+
+		if !ok {
+			log.Println("client_id not in token")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		c.Set("client", clntId)
+		c.Set("full", result)
 	}
 }
