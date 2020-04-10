@@ -151,8 +151,8 @@ func Authorize(scope, scopesecret, authority string) gin.HandlerFunc {
 			return
 		}
 
-		if actv != "true"{
-			log.Println("Active Failed", actv)
+		if !actv.(bool){
+			log.Println("Active Failed")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
