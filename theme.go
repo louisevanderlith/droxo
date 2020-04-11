@@ -63,7 +63,7 @@ func UpdateTheme(cfg clientcredentials.Config, url string) error {
 	}
 
 	for _, v := range items {
-		err = downloadFile(url, v)
+		err = downloadFile(cfg, url, v)
 
 		if err != nil {
 			return err
@@ -73,8 +73,9 @@ func UpdateTheme(cfg clientcredentials.Config, url string) error {
 	return nil
 }
 
-func downloadFile(url, templ string) error {
-	resp, err := http.Get(url + "asset/html/" + templ)
+func downloadFile(cfg clientcredentials.Config, url, templ string) error {
+	clnt := cfg.Client(context.Background())
+	resp, err := clnt.Get(url + "asset/html/" + templ)
 
 	if err != nil {
 		return err
