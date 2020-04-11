@@ -28,7 +28,7 @@ func AuthenticateClient(clientId, clientSecret, authority string, scopes ...stri
 		ClientSecret: clientSecret,
 		TokenURL:     authority + "/token",
 		Scopes:       scopes,
-		AuthStyle:    0,
+		AuthStyle:    oauth2.AuthStyleInParams,
 	}
 }
 
