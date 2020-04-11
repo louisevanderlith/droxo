@@ -33,11 +33,12 @@ func AuthenticateClient(clientId, clientSecret, authority string, scopes ...stri
 }
 
 //PrepareClientUser will return a config for the current client, to be used for user authentication
-func PrepareClientUser(clientId, clientSecret, authority string, scopes ...string) oauth2.Config {
+func PrepareClientUser(clientId, clientSecret, authority, redirect string, scopes ...string) oauth2.Config {
 	return oauth2.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		Scopes:       scopes,
+		RedirectURL: redirect,
 		Endpoint:     oauth2.Endpoint{TokenURL: authority + "/token", AuthURL: authority + "/authorize"},
 	}
 }
