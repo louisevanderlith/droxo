@@ -16,11 +16,12 @@ import (
 )
 
 type Op struct {
-	Profile string
-	APIKeys map[string]string
-	LogoKey string
+	Profile  string
+	APIKeys  map[string]string
+	LogoKey  string
 	Username string
 	LoggedIn bool
+	GTag     string
 }
 
 //AuthenticateClient will return a token for the current client
@@ -40,7 +41,7 @@ func PrepareClientUser(clientId, clientSecret, authority, redirect string, scope
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		Scopes:       scopes,
-		RedirectURL: redirect,
+		RedirectURL:  redirect,
 		Endpoint:     oauth2.Endpoint{TokenURL: authority + "/token", AuthURL: authority + "/authorize"},
 	}
 }
