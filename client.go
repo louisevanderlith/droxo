@@ -15,10 +15,12 @@ import (
 	"strings"
 )
 
-type Service struct {
+type Op struct {
 	Profile string
 	APIKeys map[string]string
 	LogoKey string
+	Username string
+	LoggedIn bool
 }
 
 //AuthenticateClient will return a token for the current client
@@ -124,6 +126,19 @@ func AuthCallback(cfg oauth2.Config) gin.HandlerFunc {
 	}
 }
 
+func Wrap(name string, oper Op, result interface{}) gin.H {
+	lname := strings.ToLower(name)
+	jstmpl := lname + ".js"
+
+	return gin.H{
+		"Title":      fmt.Sprintf("%s - %s", name, oper.Profile),
+		"Data":       result,
+		"Oper":       oper,
+		"HasScript":  true,
+		"ScriptName": jstmpl,
+	}
+}
+
 /*
 func Logout(c *gin.Context) {
 	domain := "YOUR_DOMAIN"
@@ -157,15 +172,3 @@ func Logout(c *gin.Context) {
 	http.Redirect(w, r, logoutUrl.String(), http.StatusTemporaryRedirect)
 }
 */
-func Wrap(name string, oper Service, result interface{}) gin.H {
-	lname := strings.ToLower(name)
-	jstmpl := lname + ".js"
-
-	return gin.H{
-		"Title":      fmt.Sprintf("%s - %s", name, oper.Profile),
-		"Data":       result,
-		"Oper":       oper,
-		"HasScript":  true,
-		"ScriptName": jstmpl,
-	}
-}
