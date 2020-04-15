@@ -157,15 +157,60 @@ func Authorize(scope, scopesecret, authority string) gin.HandlerFunc {
 			return
 		}
 
-		clntId, ok := result["client_id"]
+		clntId, ok := result["aud"]
 
 		if !ok {
-			log.Println("client_id not in token")
+			log.Println("aud not in token")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		profile, ok := result["profile"]
+
+		if !ok {
+			log.Println("profile not in token")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		logo, ok := result["logo"]
+
+		if !ok {
+			log.Println("logo not in token")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		gtag, ok := result["gtag"]
+
+		if !ok {
+			log.Println("gtag not in token")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		rawapis, ok := result["apis"]
+
+		if !ok {
+			log.Println("apis not in token")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		apis := make(map[string]string)
+		err = json.Unmarshal(rawapis.([]byte), &apis)
+
+		if err != nil {
+			log.Println(err)
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
 		c.Set("client", clntId)
+		c.Set("logo", logo)
+		c.Set("profile", profile)
+		c.Set("gtag", gtag)
+		c.Set("apis", apis)
 		c.Set("full", result)
 	}
 }
